@@ -1,0 +1,113 @@
+/* This project uses Java and Eclipse. */
+import org.gradle.plugins.ide.eclipse.model.SourceFolder
+apply plugin: "java"
+apply plugin: "eclipse"
+
+/* Set up group and version info for sqlite-test */
+group = "test.sqlite"
+version = "1"
+
+/* We use Java 1.7 */
+sourceCompatibility = 1.7
+targetCompatibility = 1.7
+
+/* Tell gradle where the source code is located. */
+sourceSets {
+  /* Code for main */
+  main {
+    java.srcDir 'src'
+    output.classesDir = 'build/main'
+  }
+  /* Code for tests */
+  test {
+    java.srcDir 'test'
+    output.classesDir = 'build/test'
+  }
+}
+
+
+/* Build the Eclipse .classpath file first, because if Gradle's build fails
+ * we'll want to use Eclipse to debug it. */
+compileJava.dependsOn eclipseClasspath
+tasks.eclipseClasspath.dependsOn cleanEclipseClasspath
+
+/*
+ * List the compile and runtime dependencies of all the tests.
+ * Note that "group:name:version" dependencies will be downloaded from Maven.
+ */
+
+/* Where we will fetch external JAR files from. */
+repositories {
+  mavenCentral() /* The standard Java Maven repository. */
+}
+
+/* List constants that we use in multiple places. */
+ext.slf4jVersion = "1.7.5"
+
+dependencies {
+  compile "com.almworks.sqlite4java:sqlite4java:0.282"
+
+  compile "org.slf4j:slf4j-api:${slf4jVersion}"
+  runtime "org.slf4j:slf4j-log4j12:${slf4jVersion}"
+}
+
+/* Tell Java to emit all compiler warnings. */
+tasks.withType(Compile) {
+  options.compilerArgs << "-Xlint"
+}
+
+/* Tell all tasks to add sqlite library to their classpath when running. */
+tasks.withType(Test) {
+  systemProperty "java.library.path", file("sqlite4java-282")
+}
+
+/* The eclipseClasspath task will build a local Eclipse .classpath file. */
+eclipse.classpath {
+  /* Ensure Eclipse compiled output appears in build directory. */
+  defaultOutputDir = file('build/main')
+
+  /* We don't need to download source code. Why not? With sources, it's much
+   * more convenient in debugging.
+   */
+  downloadSources = true
+  downloadJavadoc = true
+
+  file {
+
+  /* Ugly hack to stick the JNI pointer for sqlite into the .classpath file. */
+    withXml {
+      provider -> 
+      provider.asNode().findAll { it.@path.contains("sqlite") }.each { 
+        it.children().each {
+          it.appendNode('attribute', [name: 'org.eclipse.jdt.launching.CLASSPATH_ATTR_LIBRARY_PATH_ENTRY', value:'sqlite-test/lib/sqlite4java-282'])
+        }
+      }
+    }
+
+    /* Separate output folder for each src folders*/
+    whenMerged {
+      cp ->
+      cp.entries.findAll { it instanceof SourceFolder && it.path.startsWith("src") }*.output = "build/main"
+      cp.entries.findAll { it instanceof SourceFolder && it.path.startsWith("test") }*.output = "build/test"
+    }
+
+  }
+}
+
+test {
+    /* Optional: uncomment the next line to print which test is running. Useful for debugging. */
+    // beforeTest { desc -> println "Executing test ${desc.name} [${desc.className}]" }
+}
+
+jar {
+  excludes = [ 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA' ] 
+  manifest {
+    attributes("Implementation-Title" : "sqlite-test",
+               "Implementation-Version": version,
+	       "Main-Class": "test.sqlite.Main")
+  }
+
+  from configurations.runtime.collect {
+    it.isDirectory() ? it : zipTree(it)
+  }
+}

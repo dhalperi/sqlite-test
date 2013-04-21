@@ -62,8 +62,6 @@ public final class Main {
    * @throws Exception if something goes wrong
    */
   public static void main(final String[] args) throws Exception {
-    System.err.println("In main!");
-
     Path tempFile = Files.createTempFile("temp", "db");
     tempFile.toFile().deleteOnExit();
 
@@ -81,6 +79,7 @@ public final class Main {
     conn.exec("CREATE TABLE relations (\n" + "    user_name STRING NOT NULL,\n"
         + "    program_name STRING NOT NULL,\n" + "    relation_name STRING NOT NULL,\n"
         + "    PRIMARY KEY (user_name,program_name,relation_name));");
+    System.err.println(prettyNanoTime(System.nanoTime() - start));
     conn.exec("CREATE TABLE relation_schema (\n" + "    user_name STRING NOT NULL,\n"
         + "    program_name STRING NOT NULL,\n" + "    relation_name STRING NOT NULL,\n"
         + "    col_index INTEGER NOT NULL,\n" + "    col_name STRING,\n"
@@ -91,6 +90,7 @@ public final class Main {
         + "    program_name STRING NOT NULL,\n" + "    relation_name STRING NOT NULL,\n"
         + "    num_shards INTEGER NOT NULL,\n" + "    how_partitioned STRING NOT NULL,\n"
         + "    FOREIGN KEY (user_name,program_name,relation_name) REFERENCES relations);");
+    System.err.println(prettyNanoTime(System.nanoTime() - start));
     conn.exec("CREATE TABLE shards (\n"
         + "    stored_relation_id INTEGER NOT NULL REFERENCES stored_relations(stored_relation_id),\n"
         + "    shard_index INTEGER NOT NULL,\n"

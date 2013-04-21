@@ -1,1 +1,1 @@
-java -Djava.library.path=sqlite4java-282 -jar build/libs/sqlite_test-1.jar
+java -Djava.library.path=sqlite4java-282 -jar build/libs/sqlite-test-1.jar
